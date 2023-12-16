@@ -17,7 +17,11 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./apps/apex_labs/test/jest-e2e.json"
+    "test:e2e": "jest --config ./apps/apex_labs/test/jest-e2e.json",
+    "migration:create": "ts-node -r tsconfig-paths/register --project ./tsconfig.json ./node_modules/.bin/typeorm migration:create ./libs/common/src/migrations/migration",
+    "migration:generate": "ts-node -r tsconfig-paths/register --project ./tsconfig.json ./node_modules/.bin/typeorm migration:generate ./libs/common/src/migrations/migration -d /libs/common/src/configs/typeorm.config.ts",
+    "migration:up": "ts-node -r tsconfig-paths/register --project ./tsconfig.json ./node_modules/.bin/typeorm migration:run -d libs/common/src/configs/typeorm.config.ts",
+    "migration:down": "ts-node -r tsconfig-paths/register --project ./tsconfig.json ./node_modules/.bin/typeorm migration:revert -d libs/common/src/configs/typeorm.config.ts"
   },
   "dependencies": {
     "@liaoliaots/nestjs-redis": "9.0.5",
@@ -30,6 +34,8 @@
     "@nestjs/platform-express": "9.0.0",
     "@nestjs/swagger": "7.1.16",
     "@nestjs/typeorm": "9.0.1",
+    "amqp-connection-manager": "^4.1.14",
+    "amqplib": "^0.10.3",
     "class-transformer": "0.5.1",
     "class-validator": "0.14.0",
     "cookie-parser": "1.4.6",
@@ -44,6 +50,7 @@
     "typeorm": "0.3.17"
   },
   "devDependencies": {
+    "@faker-js/faker": "^8.3.1",
     "@nestjs/cli": "10.0.0",
     "@nestjs/schematics": "10.0.0",
     "@nestjs/testing": "9.0.0",

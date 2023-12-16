@@ -1,0 +1,58 @@
+version: '3'
+
+volumes:
+  pgdata: 
+  redis-volume:
+
+services:
+  db:
+    image: postgres:13
+    container_name: db
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=qwerty
+      - POSTGRES_DB=apex
+    ports:  
+        - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD',"pg_isready", '-h', 'db', '-p', '5432', '-d', 'apex', '-U', 'admin']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    tty: true
+      
+  redis: 
+    image: redis
+    container_name: redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-volume:/var/lib/redis/data
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli ping | grep PONG']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    tty: true
+
+  auth:
+    container_name: auth
+    build: 
+      context: .
+      dockerfile: ./apps/auth/Dockerfile
+      target: development
+    command: sh -c "npm run migration:up && npm run start:dev"
+    env_file:
+      - ./apps/auth/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    ports:
+      - '3000:3000'

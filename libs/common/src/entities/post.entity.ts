@@ -2,25 +2,22 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  OneToMany,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { PostEntity } from './post.entity';
+import { UserEntity } from './user.entity';
 
-@Entity('user')
-export class UserEntity {
+@Entity('post')
+export class PostEntity {
   @PrimaryGeneratedColumn('uuid')
   public id: string;
 
-  @Column({ type: 'varchar', unique: true })
-  public email: string;
-
-  @Column({ type: 'varchar', nullable: true })
-  public token: string;
-
   @Column({ type: 'varchar' })
-  public password: string;
+  public title: string;
+
+  @Column({ type: 'text' })
+  public text: string;
 
   @CreateDateColumn({ type: 'timestamp with time zone' })
   public createdAt: Date;
@@ -28,6 +25,6 @@ export class UserEntity {
   @UpdateDateColumn({ type: 'timestamp with time zone' })
   public updatedAt: Date;
 
-  @OneToMany(() => PostEntity, (posts) => posts.owner)
-  public posts: PostEntity[];
+  @ManyToOne(() => UserEntity, (owner) => owner.posts)
+  public owner: UserEntity;
 }

@@ -25,14 +25,13 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import {
   AUTH_COOKIE_NAME,
-  DEFAULT_SALT,
   RESEND_TTL_SECONDS,
   SIGN_UP_TTL_SECONDS,
 } from './consts';
 import * as crypto from 'crypto';
 import { AccessTokenInterface } from './interfaces';
-import { UserEntity } from '@app/common/entities';
 import { generateCode, generateToken } from './utils';
+import { UserEntity } from '@app/common/entities';
 
 @Injectable()
 export class AuthService {
@@ -50,7 +49,7 @@ export class AuthService {
     const { email, password } = signInDto;
     try {
       const user = await this._userService.getUserByEmail(email);
-
+      console.log(user);
       if (!user) {
         throw new NotFoundException(`User with email: ${email} does not exist`);
       }
@@ -167,7 +166,7 @@ export class AuthService {
           SIGN_UP_TTL_SECONDS,
         );
 
-        this._smtpService.send(email, `Code to activate account: ${code}`);
+        await this._smtpService.send(email, `Code to activate account: ${code}`);
         return { status: HttpStatus.OK };
       }
       const requestFromBuffer = JSON.parse(request);
@@ -343,7 +342,7 @@ export class AuthService {
   }
 
   private async _generateSalt(): Promise<string> {
-    return crypto.randomBytes(DEFAULT_SALT).toString('hex');
+    return crypto.randomBytes(10).toString('hex');
   }
 
   private async _hashWithSalt(hash: string, salt: string): Promise<string> {

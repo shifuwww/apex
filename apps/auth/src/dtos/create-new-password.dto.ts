@@ -1,6 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsString, IsStrongPassword, Length } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsString,
+  IsStrongPassword,
+  Length,
+} from 'class-validator';
 
 export class CreateNewPasswordDto {
   @ApiProperty({
@@ -8,8 +14,9 @@ export class CreateNewPasswordDto {
     type: String,
     description: 'Email of user',
   })
-  // @IsEmail()
+  @IsEmail()
   @Transform(({ value }) => value.toLowerCase())
+  @IsNotEmpty()
   email: string;
 
   @ApiProperty({
@@ -19,6 +26,7 @@ export class CreateNewPasswordDto {
   })
   @IsStrongPassword()
   @Length(8, 20)
+  @IsNotEmpty()
   password: string;
 
   @ApiProperty({
@@ -28,11 +36,6 @@ export class CreateNewPasswordDto {
   })
   @IsString()
   @Length(31, 33)
+  @IsNotEmpty()
   token: string;
-}
-function IsEmail(): (
-  target: CreateNewPasswordDto,
-  propertyKey: 'email',
-) => void {
-  throw new Error('Function not implemented.');
 }

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsStrongPassword, Length } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsStrongPassword, Length } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class SignInDto {
@@ -8,8 +8,9 @@ export class SignInDto {
     type: String,
     description: 'Email of user',
   })
-  // @IsEmail()
+  @IsEmail()
   @Transform(({ value }: { value: string }) => value.toLowerCase())
+  @IsNotEmpty()
   email: string;
 
   @ApiProperty({
@@ -19,5 +20,6 @@ export class SignInDto {
   })
   @IsStrongPassword()
   @Length(8, 20)
+  @IsNotEmpty()
   password: string;
 }
