@@ -15,7 +15,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { PostService } from './post.service';
-import { CreatePostDto, GetListPostDto, GetPostDto, ListPostDto, UpdatePostDto } from './dtos';
+import {
+  CreatePostDto,
+  GetListPostDto,
+  GetPostDto,
+  ListPostDto,
+  UpdatePostDto,
+} from './dtos';
 import { AuthGuard, RtGuard } from '@app/common/guards';
 import {
   ApiBearerAuth,
@@ -25,7 +31,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { ClientProxy } from '@nestjs/microservices';
-import { AUTH_SERVICE } from './consts';
+import { AUTH_SERVICE, MAIL_SERVICE } from './consts';
 import {
   TokensDto,
   SignInDto,
@@ -34,15 +40,17 @@ import {
   SignUpRequestDto,
   CreateNewPasswordDto,
   ResetPasswordRequestDto,
+  EmailPayloadDto,
 } from '@app/common/dtos';
 import { AccessTokenInterface } from 'apps/auth/src/interfaces';
-import { Observable } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 
 @Controller()
 export class PostController {
   constructor(
     private readonly _postService: PostService,
     @Inject(AUTH_SERVICE) private readonly _authClient: ClientProxy,
+    @Inject(MAIL_SERVICE) private readonly _mailService: ClientProxy,
   ) {}
 
   @ApiTags('post')
@@ -56,7 +64,9 @@ export class PostController {
   @UseGuards(AuthGuard)
   @ApiBearerAuth()
   @Get('post/list')
-  public getListPost(@Query() getListPostDto: GetListPostDto): Promise<ListPostDto> {
+  public getListPost(
+    @Query() getListPostDto: GetListPostDto,
+  ): Promise<ListPostDto> {
     return this._postService.getListPost(getListPostDto);
   }
 
@@ -71,7 +81,10 @@ export class PostController {
   @UseGuards(AuthGuard)
   @ApiBearerAuth()
   @Get('post/my')
-  public getMyPosts(@Query() getListPostDto: GetListPostDto, @Req() request: any): Promise<ListPostDto> {
+  public getMyPosts(
+    @Query() getListPostDto: GetListPostDto,
+    @Req() request: any,
+  ): Promise<ListPostDto> {
     const user = request.user as AccessTokenInterface;
     return this._postService.getMyPost(getListPostDto, user.id);
   }
@@ -87,7 +100,10 @@ export class PostController {
   @UseGuards(AuthGuard)
   @ApiBearerAuth()
   @Post('post')
-  public createPost(@Body() createPostDto: CreatePostDto, @Req() request: any): Promise<GetPostDto> {
+  public createPost(
+    @Body() createPostDto: CreatePostDto,
+    @Req() request: any,
+  ): Promise<GetPostDto> {
     const user = request.user as AccessTokenInterface;
     return this._postService.createPost(createPostDto, user.id);
   }
@@ -103,7 +119,10 @@ export class PostController {
   @UseGuards(AuthGuard)
   @ApiBearerAuth()
   @Put('post')
-  public updatePost(@Body() updatePostDto: UpdatePostDto, @Req() request: any): Promise<GetPostDto> {
+  public updatePost(
+    @Body() updatePostDto: UpdatePostDto,
+    @Req() request: any,
+  ): Promise<GetPostDto> {
     const user = request.user as AccessTokenInterface;
     return this._postService.updatePost(updatePostDto, user.id);
   }
@@ -134,7 +153,10 @@ export class PostController {
   @UseGuards(AuthGuard)
   @ApiBearerAuth()
   @Delete('post/:id')
-  public deletePost(@Param('id', ParseUUIDPipe) id: string, @Req() request: any): Promise<StatusDto> {
+  public deletePost(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() request: any,
+  ): Promise<StatusDto> {
     const user = request.user as AccessTokenInterface;
     return this._postService.deletePost(id, user.id);
   }
@@ -207,8 +229,13 @@ export class PostController {
   @ApiOperation({ summary: 'Send registration request' })
   @HttpCode(HttpStatus.OK)
   @Post('auth/sign-up-request')
-  public signUpRequest(@Body() signUpRequestDto: SignUpRequestDto): Observable<TokensDto> {
-    return this._authClient.send({ cmd: 'sign-up-request' }, signUpRequestDto);
+  public async signUpRequest(
+    @Body() signUpRequestDto: SignUpRequestDto,
+  ): Promise<StatusDto> {
+    const payload: EmailPayloadDto = await firstValueFrom(
+      this._authClient.send({ cmd: 'sign-up-request' }, signUpRequestDto),
+    );
+    return firstValueFrom(this._mailService.send({ cmd: 'send' }, payload));
   }
 
   @ApiTags('auth')
@@ -238,10 +265,15 @@ export class PostController {
   @ApiOperation({ summary: 'Send password reset request' })
   @HttpCode(HttpStatus.OK)
   @Post('auth/reset-password-request')
-  public resetPassword(@Body() resetPasswordDto: ResetPasswordRequestDto): Observable<TokensDto> {
-    return this._authClient.send(
-      { cmd: 'reset-password-request' },
-      resetPasswordDto,
+  public async resetPassword(
+    @Body() resetPasswordDto: ResetPasswordRequestDto,
+  ): Promise<StatusDto> {
+    const payload: EmailPayloadDto = await firstValueFrom(
+      this._authClient.send(
+        { cmd: 'reset-password-request' },
+        resetPasswordDto,
+      ),
     );
+    return firstValueFrom(this._mailService.send({ cmd: 'send' }, payload));
   }
 }

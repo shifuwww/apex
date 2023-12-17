@@ -7,11 +7,10 @@ import { ConfigModule } from '@nestjs/config';
 import { UserModule } from './user/user.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RedisModule } from '@liaoliaots/nestjs-redis';
-import { RmqModule, SmtpModule } from '@app/common/modules';
 import { ormConfig, redisConfig } from '@app/common/configs';
-import SMTP_CONFIG from '@app/common/configs/smtp.config';
 import { RtStrategy } from './strategies/refresh-token.strategy';
 import { AtStrategy } from './strategies';
+import { RmqModule } from '@app/common/modules';
 
 @Module({
   imports: [
@@ -21,10 +20,9 @@ import { AtStrategy } from './strategies';
     }),
     TypeOrmModule.forRootAsync(ormConfig),
     RedisModule.forRootAsync(redisConfig),
-    SmtpModule.forRootAsync(SMTP_CONFIG.asProvider()),
-    RmqModule,
     UserModule,
     JwtModule.registerAsync(jwtConfig),
+    RmqModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, RtStrategy, AtStrategy],

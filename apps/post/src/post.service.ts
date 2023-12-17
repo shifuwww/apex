@@ -111,7 +111,7 @@ export class PostService {
     try {
       const post = await this._postRepository.findOne({
         where: { id },
-        relations: {owner: true}
+        relations: { owner: true },
       });
 
       if (!post) {
@@ -124,7 +124,7 @@ export class PostService {
 
       await this._postRepository.remove(post);
 
-      return {status: HttpStatus.OK}
+      return { status: HttpStatus.OK };
     } catch (err) {
       this._logger.error(err);
       throw err;

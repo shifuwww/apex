@@ -11,10 +11,10 @@ import { Response } from 'express';
 import { InjectRedis } from '@liaoliaots/nestjs-redis';
 import Redis from 'ioredis';
 import { ConfigService } from '@nestjs/config';
-import { SmtpService } from '@app/common/modules';
 import { UserService } from './user/user.service';
 import {
   CreateNewPasswordDto,
+  EmailPayloadDto,
   ResetPasswordRequestDto,
   SignInDto,
   SignUpDto,
@@ -40,7 +40,6 @@ export class AuthService {
   constructor(
     private readonly _configService: ConfigService,
     private readonly _userService: UserService,
-    private readonly _smtpService: SmtpService,
     private readonly _jwtService: JwtService,
     @InjectRedis() private readonly _redisRepository: Redis,
   ) {}
@@ -175,7 +174,7 @@ export class AuthService {
 
   public async signUpRequest(
     signUpRequestDto: SignUpRequestDto,
-  ): Promise<StatusDto> {
+  ): Promise<EmailPayloadDto> {
     const { email } = signUpRequestDto;
     try {
       if (await this._userService.getUserByEmail(email)) {
@@ -199,11 +198,7 @@ export class AuthService {
           SIGN_UP_TTL_SECONDS,
         );
 
-        await this._smtpService.send(
-          email,
-          `Code to activate account: ${code}`,
-        );
-        return { status: HttpStatus.OK };
+        return { email, text: `Code to activate account: ${code}` };
       }
       const requestFromBuffer = JSON.parse(request);
       const timeDifference = Math.floor(
@@ -231,8 +226,9 @@ export class AuthService {
         SIGN_UP_TTL_SECONDS,
       );
 
-      this._smtpService.send(email, `Code to activate account: ${code}`);
-      return { status: HttpStatus.OK };
+      console.log('send');
+
+      return { email, text: `Code to activate account: ${code}` };
     } catch (err) {
       this._logger.error(err);
       throw err;
@@ -278,7 +274,7 @@ export class AuthService {
 
   public async resetPassword(
     resetPasswordDto: ResetPasswordRequestDto,
-  ): Promise<StatusDto> {
+  ): Promise<EmailPayloadDto> {
     const { email } = resetPasswordDto;
     try {
       const user = await this._userService.getUserByEmail(email);
@@ -303,13 +299,12 @@ export class AuthService {
           RESEND_TTL_SECONDS,
         );
 
-        this._smtpService.send(
+        return {
           email,
-          `Link to reset password: ${
+          text: `Link to reset password: ${
             this._configService.get('CLIENT_URL') + '/reset-password/' + secret
           }`,
-        );
-        return { status: HttpStatus.OK };
+        };
       }
       const requestFromBuffer = JSON.parse(request);
       const timeDifference = Math.floor(
@@ -336,11 +331,12 @@ export class AuthService {
         RESEND_TTL_SECONDS,
       );
 
-      this._smtpService.send(
+      return {
         email,
-        `You can resend message after ${RESEND_TTL_SECONDS - timeDifference}s`,
-      );
-      return { status: HttpStatus.OK };
+        text: `Link to reset password: ${
+          this._configService.get('CLIENT_URL') + '/reset-password/' + secret
+        }`,
+      };
     } catch (err) {
       this._logger.error(err);
       throw err;

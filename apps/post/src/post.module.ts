@@ -6,8 +6,7 @@ import { ormConfig } from '@app/common/configs';
 import { RmqModule } from '@app/common/modules';
 import { ConfigModule } from '@nestjs/config';
 import { PostEntity } from '@app/common/entities';
-import { AUTH_SERVICE } from './consts';
-import { AuthController } from 'apps/auth/src/auth.controller';
+import { AUTH_SERVICE, MAIL_SERVICE } from './consts';
 
 @Module({
   imports: [
@@ -19,6 +18,9 @@ import { AuthController } from 'apps/auth/src/auth.controller';
     TypeOrmModule.forFeature([PostEntity]),
     RmqModule.register({
       name: AUTH_SERVICE,
+    }),
+    RmqModule.register({
+      name: MAIL_SERVICE,
     }),
   ],
   controllers: [PostController],

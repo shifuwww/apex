@@ -66,6 +66,21 @@ services:
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules
+  mail:
+    container_name: mail
+    build: 
+      context: .
+      dockerfile: ./apps/mail/Dockerfile
+      target: development
+    command: npm run start:dev mail
+    env_file:
+      - ./apps/mail/.env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy 
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
   post:
       container_name: post
       build: 

@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { catchError, firstValueFrom, Observable, of, switchMap } from 'rxjs';
+import { catchError, firstValueFrom, of, switchMap } from 'rxjs';
 
 @Injectable()
 export class RtGuard implements CanActivate {

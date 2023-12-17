@@ -5,11 +5,11 @@ import { AuthService } from './auth.service';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import {
   CreateNewPasswordDto,
+  EmailPayloadDto,
   ResetPasswordRequestDto,
   SignInDto,
   SignUpDto,
   SignUpRequestDto,
-  StatusDto,
   TokensDto,
 } from '@app/common/dtos';
 import { AtGuard, RtGuard } from './guards';
@@ -57,10 +57,10 @@ export class AuthController {
     response.send(data);
   }
 
-  @MessagePattern({ cmd: 'sign-in-request' })
+  @MessagePattern({ cmd: 'sign-up-request' })
   public signUpRequest(
     @Payload() signUpRequestDto: SignUpRequestDto,
-  ): Promise<StatusDto> {
+  ): Promise<EmailPayloadDto> {
     return this._authService.signUpRequest(signUpRequestDto);
   }
 
@@ -79,7 +79,7 @@ export class AuthController {
   @MessagePattern({ cmd: 'reset-new-password' })
   public resetPassword(
     @Payload() resetPasswordDto: ResetPasswordRequestDto,
-  ): Promise<StatusDto> {
+  ): Promise<EmailPayloadDto> {
     return this._authService.resetPassword(resetPasswordDto);
   }
 
