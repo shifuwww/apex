@@ -29,7 +29,6 @@ export class AuthGuard implements CanActivate {
     if (authHeaderParts.length !== 2) return false;
 
     const [, jwt] = authHeaderParts;
-
     return this._authService.send({ cmd: 'validate-at-jwt' }, { jwt }).pipe(
       switchMap(({ exp }) => {
         if (!exp) return of(false);

@@ -7,12 +7,12 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { Response } from 'express';
 import { InjectRedis } from '@liaoliaots/nestjs-redis';
 import Redis from 'ioredis';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from './user/user.service';
 import {
+  CookieConfigDto,
   CreateNewPasswordDto,
   EmailPayloadDto,
   ResetPasswordRequestDto,
@@ -23,11 +23,7 @@ import {
   TokensDto,
 } from '../../../libs/common/src/dtos';
 import { JwtService } from '@nestjs/jwt';
-import {
-  AUTH_COOKIE_NAME,
-  RESEND_TTL_SECONDS,
-  SIGN_UP_TTL_SECONDS,
-} from './consts';
+import { RESEND_TTL_SECONDS, SIGN_UP_TTL_SECONDS } from './consts';
 import * as crypto from 'crypto';
 import { AccessTokenInterface } from './interfaces';
 import { generateCode, generateToken } from './utils';
@@ -54,6 +50,7 @@ export class AuthService {
         secret: this._configService.get('JWT_REFRESH_TOKEN_SECRET'),
         ignoreExpiration: false,
       });
+
       return { user, exp };
     } catch (err) {
       this._logger.error(err);
@@ -343,14 +340,19 @@ export class AuthService {
     }
   }
 
-  public async setCookie(response: Response, refreshToken: string | null) {
-    response.cookie(AUTH_COOKIE_NAME, refreshToken, {
+  public async cookieConfig(
+    refreshToken: string | null,
+  ): Promise<CookieConfigDto> {
+    return {
       httpOnly: true,
       expires: refreshToken
-        ? new Date(this._configService.get('JWT_REFRESH_TOKEN_TTL') * 1000)
+        ? new Date(
+            Date.now() +
+              +this._configService.get('JWT_REFRESH_TOKEN_TTL') * 1000,
+          )
         : new Date(Date.now() - 1000),
       path: '/',
-    });
+    };
   }
 
   private async _hashPassword(target: string): Promise<string> {

@@ -1,1 +1,2 @@
-export * from './service.conts';
+export * from './cookie.const';
+export * from './service.const';

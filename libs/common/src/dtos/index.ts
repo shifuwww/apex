@@ -1,3 +1,4 @@
+export * from './cookie-config.dto';
 export * from './create-new-password.dto';
 export * from './email-payload.dto';
 export * from './reset-password-request.dto';

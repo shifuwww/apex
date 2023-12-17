@@ -19,22 +19,20 @@ export class RtGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
 
-    const authCookies = await request.cookies['auth'];
-
+    const authCookies = await request.cookies?.auth;
     if (!authCookies) return false;
-
     return firstValueFrom(
       this._authService
-        .send({ cmd: 'validate-rt-jwt' }, { jwt: authCookies })
+        .send({ cmd: 'validate-rt-jwt' }, { jwt: authCookies, request })
         .pipe(
           switchMap(({ exp }) => {
+            console.log(exp)
             if (!exp) return of(false);
-
             const TOKEN_EXP_MS = exp * 1000;
-            console.log(TOKEN_EXP_MS, Date.now());
             const isJwtValid = Date.now() < TOKEN_EXP_MS;
-            console.log(exp);
-            return of(isJwtValid);
+
+
+            return of(isJwtValid ? context.switchToHttp().getRequest().user : false);
           }),
           catchError(() => {
             throw new UnauthorizedException();

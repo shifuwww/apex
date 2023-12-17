@@ -4,9 +4,8 @@ import { MailModule } from './mail.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(MailModule);
-
-  const sharedService = app.get(RmqService);
-  app.connectMicroservice(sharedService.getOptions('mail'));
-  app.startAllMicroservices();
+  const rmqService = app.get<RmqService>(RmqService);
+  app.connectMicroservice(rmqService.getOptions('mail'));
+  await app.startAllMicroservices();
 }
 bootstrap();

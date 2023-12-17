@@ -12,6 +12,7 @@ import {
   Put,
   Query,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import { PostService } from './post.service';
@@ -20,6 +21,7 @@ import {
   GetListPostDto,
   GetPostDto,
   ListPostDto,
+  TokenDto,
   UpdatePostDto,
 } from './dtos';
 import { AuthGuard, RtGuard } from '@app/common/guards';
@@ -31,7 +33,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { ClientProxy } from '@nestjs/microservices';
-import { AUTH_SERVICE, MAIL_SERVICE } from './consts';
+import { AUTH_SERVICE, COOKIE_AUTH, MAIL_SERVICE } from './consts';
 import {
   TokensDto,
   SignInDto,
@@ -41,9 +43,11 @@ import {
   CreateNewPasswordDto,
   ResetPasswordRequestDto,
   EmailPayloadDto,
+  CookieConfigDto,
 } from '@app/common/dtos';
 import { AccessTokenInterface } from 'apps/auth/src/interfaces';
-import { Observable, firstValueFrom } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
+import { Response } from 'express';
 
 @Controller()
 export class PostController {
@@ -165,13 +169,26 @@ export class PostController {
   @ApiResponse({
     status: 200,
     description: 'User sign in',
-    type: TokensDto,
+    type: TokenDto,
   })
   @ApiOperation({ summary: 'User sign in' })
   @HttpCode(HttpStatus.OK)
   @Post('sign-in')
-  public signIn(@Body() signInDto: SignInDto): Observable<TokensDto> {
-    return this._authClient.send({ cmd: 'sign-in' }, signInDto);
+  public async signIn(
+    @Body() signInDto: SignInDto,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<TokenDto> {
+    const data: TokensDto & CookieConfigDto = await firstValueFrom(
+      this._authClient.send({ cmd: 'sign-in' }, { body: signInDto }),
+    );
+    const { refreshToken, httpOnly, expires, path } = data;
+    response.cookie(COOKIE_AUTH, refreshToken, {
+      httpOnly,
+      expires: new Date(expires),
+      path,
+    });
+
+    return { accessToken: data.accessToken };
   }
 
   @ApiTags('auth')
@@ -185,9 +202,16 @@ export class PostController {
   @UseGuards(RtGuard)
   @HttpCode(HttpStatus.OK)
   @Post('auth/logout')
-  public logout(@Req() request: any): Observable<TokensDto> {
+  public async logout(
+    @Req() request: any,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<StatusDto> {
     const user = request.user as AccessTokenInterface;
-    return this._authClient.send({ cmd: 'logout' }, { id: user.id });
+    const cookie: CookieConfigDto = await firstValueFrom(
+      this._authClient.send({ cmd: 'logout' }, { id: user.id }),
+    );
+    response.cookie(COOKIE_AUTH, null, cookie);
+    return { status: HttpStatus.OK };
   }
 
   @ApiTags('auth')
@@ -201,10 +225,23 @@ export class PostController {
   @UseGuards(RtGuard)
   @ApiCookieAuth()
   @Post('auth/refresh')
-  public refresh(@Req() request: any): Observable<TokensDto> {
+  public async refresh(
+    @Req() request: any,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<TokenDto> {
     const user = request.user as AccessTokenInterface;
     const token = request.cookies['auth'];
-    return this._authClient.send({ cmd: 'refresh' }, { id: user.id, token });
+    const data: TokensDto & CookieConfigDto = await firstValueFrom(
+      this._authClient.send({ cmd: 'refresh' }, { id: user.id, token }),
+    );
+    const { refreshToken, httpOnly, expires, path } = data;
+    response.cookie(COOKIE_AUTH, refreshToken, {
+      httpOnly,
+      expires: new Date(expires),
+      path,
+    });
+
+    return { accessToken: data.accessToken };
   }
 
   @ApiTags('auth')
@@ -216,8 +253,21 @@ export class PostController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Finished registration' })
   @Post('auth/sign-up')
-  public signUp(@Body() signUpDto: SignUpDto): Observable<TokensDto> {
-    return this._authClient.send({ cmd: 'sign-up' }, signUpDto);
+  public async signUp(
+    @Body() signUpDto: SignUpDto,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<TokenDto> {
+    const data: TokensDto & CookieConfigDto = await firstValueFrom(
+      this._authClient.send({ cmd: 'sign-up' }, signUpDto),
+    );
+    const { refreshToken, httpOnly, expires, path } = data;
+    response.cookie(COOKIE_AUTH, refreshToken, {
+      httpOnly,
+      expires: new Date(expires),
+      path,
+    });
+
+    return { accessToken: data.accessToken };
   }
 
   @ApiTags('auth')
@@ -247,13 +297,25 @@ export class PostController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'User password update' })
   @Post(`create-new-password`)
-  public createNewPassword(
+  public async createNewPassword(
     @Body() createNewPasswordDto: CreateNewPasswordDto,
-  ): Observable<TokensDto> {
-    return this._authClient.send(
-      { cmd: 'create-new-password' },
-      createNewPasswordDto,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<TokenDto> {
+    const data: TokensDto & CookieConfigDto = await firstValueFrom(
+      this._authClient.send(
+        { cmd: 'create-new-password' },
+        createNewPasswordDto,
+      ),
     );
+
+    const { refreshToken, httpOnly, expires, path } = data;
+    response.cookie(COOKIE_AUTH, refreshToken, {
+      httpOnly,
+      expires: new Date(expires),
+      path,
+    });
+
+    return { accessToken: data.accessToken };
   }
 
   @ApiTags('auth')

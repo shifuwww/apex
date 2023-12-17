@@ -1,9 +1,10 @@
-import { Controller, Res, UseGuards } from '@nestjs/common';
+import { Controller, UseGuards } from '@nestjs/common';
 import { Response } from 'express';
 import { ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import {
+  CookieConfigDto,
   CreateNewPasswordDto,
   EmailPayloadDto,
   ResetPasswordRequestDto,
@@ -21,40 +22,38 @@ export class AuthController {
 
   @MessagePattern({ cmd: 'sign-in' })
   public async signIn(
-    @Payload() signInDto: SignInDto,
-    @Res({ passthrough: true }) response: Response,
-  ): Promise<TokensDto> {
-    return this._authService.signIn(signInDto);
+    @Payload() payload: { body: SignInDto; response: Response },
+  ): Promise<TokensDto & CookieConfigDto> {
+    const data = await this._authService.signIn(payload.body);
+    const cookie = await this._authService.cookieConfig(data.refreshToken);
+    return { ...data, ...cookie };
   }
 
   @MessagePattern({ cmd: 'logout' })
   public async logout(
     @Payload() payload: { id: string },
-    @Res({ passthrough: true }) response: Response,
-  ): Promise<void> {
-    this._authService.setCookie(response, null);
+  ): Promise<CookieConfigDto> {
     await this._authService.logout(payload.id);
-    response.send();
+    const cookie = await this._authService.cookieConfig(null);
+    return cookie;
   }
 
   @MessagePattern({ cmd: 'refresh' })
   public async refresh(
     @Payload() payload: { id: string; token: string },
-    @Res({ passthrough: true }) response: Response,
-  ): Promise<void> {
+  ): Promise<TokensDto & CookieConfigDto> {
     const data = await this._authService.refresh(payload.id, payload.token);
-    this._authService.setCookie(response, data.refreshToken);
-    response.send(data);
+    const cookie = await this._authService.cookieConfig(data.refreshToken);
+    return { ...data, ...cookie };
   }
 
   @MessagePattern({ cmd: 'sign-up' })
   public async signUp(
     @Payload() signUpDto: SignUpDto,
-    @Res({ passthrough: true }) response: Response,
-  ): Promise<void> {
+  ): Promise<TokensDto & CookieConfigDto> {
     const data = await this._authService.signUp(signUpDto);
-    this._authService.setCookie(response, data.refreshToken);
-    response.send(data);
+    const cookie = await this._authService.cookieConfig(data.refreshToken);
+    return { ...data, ...cookie };
   }
 
   @MessagePattern({ cmd: 'sign-up-request' })
@@ -67,13 +66,12 @@ export class AuthController {
   @MessagePattern({ cmd: 'create-new-password' })
   public async createNewPassword(
     @Payload() createNewPasswordDto: CreateNewPasswordDto,
-    @Res({ passthrough: true }) response: Response,
-  ): Promise<void> {
+  ): Promise<TokensDto & CookieConfigDto> {
     const data = await this._authService.createNewPassword(
       createNewPasswordDto,
     );
-    this._authService.setCookie(response, data.refreshToken);
-    response.send(data);
+    const cookie = await this._authService.cookieConfig(data.refreshToken);
+    return { ...data, ...cookie };
   }
 
   @MessagePattern({ cmd: 'reset-new-password' })
@@ -83,7 +81,6 @@ export class AuthController {
     return this._authService.resetPassword(resetPasswordDto);
   }
 
-  @UseGuards(AtGuard)
   @MessagePattern({ cmd: 'validate-at-jwt' })
   public validateAtJwt(
     @Payload() payload: { jwt: string },
@@ -91,7 +88,6 @@ export class AuthController {
     return this._authService.validateAtJwt(payload.jwt);
   }
 
-  @UseGuards(RtGuard)
   @MessagePattern({ cmd: 'validate-rt-jwt' })
   public validateRtJwt(
     @Payload() payload: { jwt: string },
