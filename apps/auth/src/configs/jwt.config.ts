@@ -6,9 +6,10 @@ export const jwtConfig = {
     return {
       global: true,
       secret: configService.get('JWT_ACCESS_TOKEN_SECRET'),
-      secretRefresh: configService.get('JWT_REFRESH_TOKEN_SECRET'),
-      accessTokenTtl: configService.get('JWT_ACCESS_TOKEN_TTL') || 3600,
-      refreshTokenTtl: configService.get('JWT_ACCESS_TOKEN_TTL') || 604800,
+      signOptions: {
+        expiresIn: +configService.get('JWT_ACCESS_TOKEN_TTL') || 3600,
+      },
+      notBefore: 0,
     };
   },
   inject: [ConfigService],

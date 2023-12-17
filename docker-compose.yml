@@ -36,14 +36,24 @@ services:
       timeout: 5s
       retries: 5
     tty: true
-
+  rabbitmq:
+    image: rabbitmq
+    container_name: rabbit
+    ports:
+      - '5672:5672'
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    tty: true
   auth:
     container_name: auth
     build: 
       context: .
       dockerfile: ./apps/auth/Dockerfile
       target: development
-    command: sh -c "npm run migration:up && npm run start:dev"
+    command: npm run start:dev auth
     env_file:
       - ./apps/auth/.env
     depends_on:
@@ -51,8 +61,27 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy 
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules
-    ports:
+  post:
+      container_name: post
+      build: 
+        context: .
+        dockerfile: ./apps/post/Dockerfile
+        target: development
+      command: sh -c "npm run migration:up && npm run start:dev"
+      env_file:
+        - ./apps/post/.env
+      depends_on:
+        db:
+          condition: service_healthy
+        rabbitmq:
+          condition: service_healthy 
+      volumes:
+        - .:/usr/src/app
+        - /usr/src/app/node_modules
+      ports:
       - '3000:3000'

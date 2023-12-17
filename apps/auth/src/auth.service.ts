@@ -21,7 +21,7 @@ import {
   SignUpRequestDto,
   StatusDto,
   TokensDto,
-} from './dtos';
+} from '../../../libs/common/src/dtos';
 import { JwtService } from '@nestjs/jwt';
 import {
   AUTH_COOKIE_NAME,
@@ -45,11 +45,44 @@ export class AuthService {
     @InjectRedis() private readonly _redisRepository: Redis,
   ) {}
 
+  public async validateRtJwt(token: string) {
+    if (!token) {
+      throw new UnauthorizedException();
+    }
+
+    try {
+      const { user, exp } = await this._jwtService.verifyAsync(token, {
+        secret: this._configService.get('JWT_REFRESH_TOKEN_SECRET'),
+        ignoreExpiration: false,
+      });
+      return { user, exp };
+    } catch (err) {
+      this._logger.error(err);
+      console.log(err);
+      throw err;
+    }
+  }
+
+  public async validateAtJwt(token: string) {
+    if (!token) {
+      throw new UnauthorizedException();
+    }
+
+    try {
+      const { user, exp } = await this._jwtService.verifyAsync(token, {
+        secret: this._configService.get('JWT_ACCESS_TOKEN_SECRET'),
+      });
+      return { user, exp };
+    } catch (err) {
+      this._logger.error(err);
+      throw err;
+    }
+  }
+
   public async signIn(signInDto: SignInDto): Promise<TokensDto> {
     const { email, password } = signInDto;
     try {
       const user = await this._userService.getUserByEmail(email);
-      console.log(user);
       if (!user) {
         throw new NotFoundException(`User with email: ${email} does not exist`);
       }
@@ -166,7 +199,10 @@ export class AuthService {
           SIGN_UP_TTL_SECONDS,
         );
 
-        await this._smtpService.send(email, `Code to activate account: ${code}`);
+        await this._smtpService.send(
+          email,
+          `Code to activate account: ${code}`,
+        );
         return { status: HttpStatus.OK };
       }
       const requestFromBuffer = JSON.parse(request);
@@ -311,7 +347,7 @@ export class AuthService {
     }
   }
 
-  public setCookie(response: Response, refreshToken: string | null) {
+  public async setCookie(response: Response, refreshToken: string | null) {
     response.cookie(AUTH_COOKIE_NAME, refreshToken, {
       httpOnly: true,
       expires: refreshToken
@@ -356,15 +392,18 @@ export class AuthService {
       sub: userId,
       email: email,
     };
-
     const [at, rt] = await Promise.all([
-      this._jwtService.signAsync(jwtPayload, {
+      await this._jwtService.signAsync(jwtPayload, {
         secret: this._configService.get<string>('JWT_ACCESS_TOKEN_SECRET'),
-        expiresIn: +this._configService.get<string>('JWT_ACCESS_TOKEN_TTL'),
+        expiresIn: `${this._configService.get<string>(
+          'JWT_ACCESS_TOKEN_TTL',
+        )}s`,
       }),
-      this._jwtService.signAsync(jwtPayload, {
+      await this._jwtService.signAsync(jwtPayload, {
         secret: this._configService.get<string>('JWT_REFRESH_TOKEN_SECRET'),
-        expiresIn: +this._configService.get<string>('JWT_REFRESH_TOKEN_TTL'),
+        expiresIn: `${this._configService.get<string>(
+          'JWT_REFRESH_TOKEN_TTL',
+        )}s`,
       }),
     ]);
 

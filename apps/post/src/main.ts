@@ -11,7 +11,6 @@ const DEFAULT_HOST = 'localhost';
 
 async function bootstrap() {
   const app = await NestFactory.create(PostModule);
-
   app.use(cookieParser());
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT') || DEFAULT_PORT;
@@ -29,6 +28,7 @@ async function bootstrap() {
     .setDescription(packageJson.description)
     .setVersion(packageJson.version)
     .addBearerAuth()
+    .addCookieAuth('auth', { type: 'apiKey', in: 'cookie' })
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup(globalPrefix, app, document);
@@ -37,7 +37,6 @@ async function bootstrap() {
     credentials: true,
     origin: '*',
   });
-
   await app.listen(port, host, () =>
     Logger.log(
       `🚀 Application is running on: http://${host}:${port}/${globalPrefix}`,

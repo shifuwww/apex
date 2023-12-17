@@ -17,26 +17,26 @@ export class CreateDbMigration1702761905715 implements MigrationInterface {
         )
     `);
     async function _hashPassword(target: string): Promise<string> {
-        try {
-          const salt = await _generateSalt();
-          const hash = await _hashWithSalt(target, salt);
-    
-          return `${salt}:${hash}`;
-        } catch (err) {
-          this._logger.error(err);
-          throw err;
-        }
+      try {
+        const salt = await _generateSalt();
+        const hash = await _hashWithSalt(target, salt);
+
+        return `${salt}:${hash}`;
+      } catch (err) {
+        this._logger.error(err);
+        throw err;
+      }
     }
 
     async function _generateSalt(): Promise<string> {
-        return crypto.randomBytes(10).toString('hex');
-      }
-    
+      return crypto.randomBytes(10).toString('hex');
+    }
+
     async function _hashWithSalt(hash: string, salt: string): Promise<string> {
-        const _hash = crypto.createHmac('sha256', salt);
-        _hash.update(hash);
-        return _hash.digest('hex');
-      }
+      const _hash = crypto.createHmac('sha256', salt);
+      _hash.update(hash);
+      return _hash.digest('hex');
+    }
 
     const users: UserEntity[] = [
       Object.assign(new UserEntity(), {

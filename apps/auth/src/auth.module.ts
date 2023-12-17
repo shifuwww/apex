@@ -10,6 +10,8 @@ import { RedisModule } from '@liaoliaots/nestjs-redis';
 import { RmqModule, SmtpModule } from '@app/common/modules';
 import { ormConfig, redisConfig } from '@app/common/configs';
 import SMTP_CONFIG from '@app/common/configs/smtp.config';
+import { RtStrategy } from './strategies/refresh-token.strategy';
+import { AtStrategy } from './strategies';
 
 @Module({
   imports: [
@@ -25,6 +27,6 @@ import SMTP_CONFIG from '@app/common/configs/smtp.config';
     JwtModule.registerAsync(jwtConfig),
   ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, RtStrategy, AtStrategy],
 })
 export class AuthModule {}

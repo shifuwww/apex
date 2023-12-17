@@ -1,6 +1,7 @@
 import { PostEntity } from '@app/common/entities';
 import {
   ForbiddenException,
+  HttpStatus,
   Injectable,
   Logger,
   NotFoundException,
@@ -14,6 +15,7 @@ import {
   ListPostDto,
   UpdatePostDto,
 } from './dtos';
+import { StatusDto } from '@app/common/dtos';
 
 @Injectable()
 export class PostService {
@@ -99,6 +101,30 @@ export class PostService {
       }
 
       return post;
+    } catch (err) {
+      this._logger.error(err);
+      throw err;
+    }
+  }
+
+  public async deletePost(id: string, userId: string): Promise<StatusDto> {
+    try {
+      const post = await this._postRepository.findOne({
+        where: { id },
+        relations: {owner: true}
+      });
+
+      if (!post) {
+        throw new NotFoundException('Post does not exist!');
+      }
+
+      if (post.owner.id !== userId) {
+        throw new ForbiddenException('Access denied!');
+      }
+
+      await this._postRepository.remove(post);
+
+      return {status: HttpStatus.OK}
     } catch (err) {
       this._logger.error(err);
       throw err;

@@ -1,21 +1,8 @@
-import {
-  Body,
-  Controller,
-  HttpCode,
-  HttpStatus,
-  Post,
-  Req,
-  Res,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Res, UseGuards } from '@nestjs/common';
 import { Response } from 'express';
-import {
-  ApiCookieAuth,
-  ApiOperation,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
+import { MessagePattern, Payload } from '@nestjs/microservices';
 import {
   CreateNewPasswordDto,
   ResetPasswordRequestDto,
@@ -24,134 +11,91 @@ import {
   SignUpRequestDto,
   StatusDto,
   TokensDto,
-} from './dtos';
-import { RtGuard } from './guards';
-import { AUTH_COOKIE_NAME } from './consts';
-import { AccessTokenInterface } from './interfaces';
+} from '@app/common/dtos';
+import { AtGuard, RtGuard } from './guards';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly _authService: AuthService) {}
 
-  @ApiResponse({
-    status: 200,
-    description: 'User sign in',
-    type: TokensDto,
-  })
-  @ApiOperation({ summary: 'User sign in' })
-  @HttpCode(HttpStatus.OK)
-  @Post('sign-in')
+  @MessagePattern({ cmd: 'sign-in' })
   public async signIn(
-    @Body() signInDto: SignInDto,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<TokensDto> {
-    const data = await this._authService.signIn(signInDto);
-    this._authService.setCookie(res, data.refreshToken);
-    return data;
-  }
-
-  @ApiResponse({
-    status: 200,
-    description: 'user logout',
-    type: StatusDto,
-  })
-  @ApiCookieAuth()
-  @ApiOperation({ summary: 'user logout' })
-  @UseGuards(RtGuard)
-  @HttpCode(HttpStatus.OK)
-  @Post('logout')
-  public logout(
-    @Req() request: any,
+    @Payload() signInDto: SignInDto,
     @Res({ passthrough: true }) response: Response,
-  ): Promise<StatusDto> {
-    const user = request.user as AccessTokenInterface;
+  ): Promise<TokensDto> {
+    return this._authService.signIn(signInDto);
+  }
+
+  @MessagePattern({ cmd: 'logout' })
+  public async logout(
+    @Payload() payload: { id: string },
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<void> {
     this._authService.setCookie(response, null);
-    return this._authService.logout(user.id);
+    await this._authService.logout(payload.id);
+    response.send();
   }
 
-  @ApiResponse({
-    status: 200,
-    description: 'User tokens refresh',
-    type: StatusDto,
-  })
-  @ApiOperation({ summary: 'Update tokens by refresh token' })
-  @HttpCode(HttpStatus.OK)
-  @UseGuards(RtGuard)
-  @ApiCookieAuth()
-  @Post('refresh')
+  @MessagePattern({ cmd: 'refresh' })
   public async refresh(
-    @Req() request: any,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<TokensDto> {
-    const token = request.cookies[AUTH_COOKIE_NAME];
-    const user = request.user as AccessTokenInterface;
-    const data = await this._authService.refresh(user.id, token);
-    this._authService.setCookie(res, data.refreshToken);
-    return data;
+    @Payload() payload: { id: string; token: string },
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<void> {
+    const data = await this._authService.refresh(payload.id, payload.token);
+    this._authService.setCookie(response, data.refreshToken);
+    response.send(data);
   }
 
-  @ApiResponse({
-    status: 201,
-    description: 'User sign up',
-    type: TokensDto,
-  })
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Finished registration' })
-  @Post(`sign-up`)
+  @MessagePattern({ cmd: 'sign-up' })
   public async signUp(
-    @Body() signUpDto: SignUpDto,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<TokensDto> {
+    @Payload() signUpDto: SignUpDto,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<void> {
     const data = await this._authService.signUp(signUpDto);
-    this._authService.setCookie(res, data.refreshToken);
-    return data;
+    this._authService.setCookie(response, data.refreshToken);
+    response.send(data);
   }
 
-  @ApiResponse({
-    status: 200,
-    description: 'Sign up request',
-    type: StatusDto,
-  })
-  @ApiOperation({ summary: 'Send registration request' })
-  @HttpCode(HttpStatus.OK)
-  @Post('sign-up-request')
+  @MessagePattern({ cmd: 'sign-in-request' })
   public signUpRequest(
-    @Body() signUpRequestDto: SignUpRequestDto,
+    @Payload() signUpRequestDto: SignUpRequestDto,
   ): Promise<StatusDto> {
     return this._authService.signUpRequest(signUpRequestDto);
   }
 
-  @ApiResponse({
-    status: 200,
-    description: 'User password updated',
-    type: TokensDto,
-  })
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'User password update' })
-  @Post(`create-new-password`)
+  @MessagePattern({ cmd: 'create-new-password' })
   public async createNewPassword(
-    @Body() createNewPasswordDto: CreateNewPasswordDto,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<TokensDto> {
+    @Payload() createNewPasswordDto: CreateNewPasswordDto,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<void> {
     const data = await this._authService.createNewPassword(
       createNewPasswordDto,
     );
-    this._authService.setCookie(res, data.refreshToken);
-    return data;
+    this._authService.setCookie(response, data.refreshToken);
+    response.send(data);
   }
 
-  @ApiResponse({
-    status: 200,
-    description: 'Password reset request',
-    type: StatusDto,
-  })
-  @ApiOperation({ summary: 'Send password reset request' })
-  @HttpCode(HttpStatus.OK)
-  @Post('reset-password-request')
+  @MessagePattern({ cmd: 'reset-new-password' })
   public resetPassword(
-    @Body() resetPasswordDto: ResetPasswordRequestDto,
+    @Payload() resetPasswordDto: ResetPasswordRequestDto,
   ): Promise<StatusDto> {
     return this._authService.resetPassword(resetPasswordDto);
+  }
+
+  @UseGuards(AtGuard)
+  @MessagePattern({ cmd: 'validate-at-jwt' })
+  public validateAtJwt(
+    @Payload() payload: { jwt: string },
+  ): Promise<{ user: any; exp: any }> {
+    return this._authService.validateAtJwt(payload.jwt);
+  }
+
+  @UseGuards(RtGuard)
+  @MessagePattern({ cmd: 'validate-rt-jwt' })
+  public validateRtJwt(
+    @Payload() payload: { jwt: string },
+  ): Promise<{ user: any; exp: any }> {
+    return this._authService.validateRtJwt(payload.jwt);
   }
 }

@@ -13,10 +13,4 @@ describe('PostController', () => {
 
     postController = app.get<PostController>(PostController);
   });
-
-  describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(postController.getHello()).toBe('Hello World!');
-    });
-  });
 });

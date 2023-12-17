@@ -23,7 +23,6 @@ export class SmtpService implements OnModuleInit {
   }
 
   async send(to: string, text: string) {
-    console.log(to)
     try {
       await this.transport.sendMail({
         from: this.smtpOptions.from,
@@ -31,7 +30,7 @@ export class SmtpService implements OnModuleInit {
         text: `<h1>${text}</h1>`,
         to,
       });
-    } catch(err) {
+    } catch (err) {
       this._logger.error(err);
       throw err;
     }
