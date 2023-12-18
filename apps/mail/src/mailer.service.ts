@@ -13,7 +13,6 @@ export class MailService {
 
   async send(to: string, text: string) {
     try {
-      console.log(this._configService.get<string>('SMTP_USER'));
       await this._mailService.sendMail({
         from: this._configService.get<string>('SMTP_USER'),
         html: `<h1>${text}</h1>`,

@@ -9,19 +9,19 @@ import { ClientProxy } from '@nestjs/microservices';
 import { catchError, Observable, of, switchMap } from 'rxjs';
 
 @Injectable()
-export class AuthGuard implements CanActivate {
+export class AtGuard implements CanActivate {
   constructor(@Inject('auth') private readonly _authService: ClientProxy) {}
 
   canActivate(
     context: ExecutionContext,
   ): boolean | Promise<boolean> | Observable<boolean> {
-    if (context.getType() !== 'http') {
-      return false;
+    let authHeader: string;
+    if (context.getType() === 'http') {
+      authHeader = context.switchToHttp().getRequest().headers['authorization']
+    } else if (context.getType() === 'rpc') {
+      authHeader = context.switchToRpc().getData().headers.get('Authorization');
     }
 
-    const request = context.switchToHttp().getRequest();
-
-    const authHeader = request.headers['authorization'];
     if (!authHeader) return false;
 
     const authHeaderParts = (authHeader as string).split(' ');
@@ -29,14 +29,12 @@ export class AuthGuard implements CanActivate {
     if (authHeaderParts.length !== 2) return false;
 
     const [, jwt] = authHeaderParts;
+
     return this._authService.send({ cmd: 'validate-at-jwt' }, { jwt }).pipe(
-      switchMap(({ exp }) => {
+      switchMap(({ exp, sub }) => {
         if (!exp) return of(false);
-        const TOKEN_EXP_MS = exp * 1000;
-
-        const isJwtValid = Date.now() < TOKEN_EXP_MS;
-
-        return of(isJwtValid);
+   
+        return of(sub);
       }),
       catchError(() => {
         throw new UnauthorizedException();

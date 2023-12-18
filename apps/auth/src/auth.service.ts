@@ -46,15 +46,13 @@ export class AuthService {
     }
 
     try {
-      const { user, exp } = await this._jwtService.verifyAsync(token, {
+      const { sub, exp } = await this._jwtService.verifyAsync(token, {
         secret: this._configService.get('JWT_REFRESH_TOKEN_SECRET'),
         ignoreExpiration: false,
       });
-
-      return { user, exp };
+      return { sub, exp };
     } catch (err) {
       this._logger.error(err);
-      console.log(err);
       throw err;
     }
   }
@@ -65,10 +63,11 @@ export class AuthService {
     }
 
     try {
-      const { user, exp } = await this._jwtService.verifyAsync(token, {
+      const { sub, exp } = await this._jwtService.verifyAsync(token, {
         secret: this._configService.get('JWT_ACCESS_TOKEN_SECRET'),
       });
-      return { user, exp };
+
+      return { sub, exp };
     } catch (err) {
       this._logger.error(err);
       throw err;
@@ -98,9 +97,10 @@ export class AuthService {
     }
   }
 
-  public async logout(userId: string): Promise<StatusDto> {
+  public async logout(token: string): Promise<StatusDto> {
     try {
-      await this._userService.updateToken(userId, null);
+      const user: AccessTokenInterface = await this._jwtService.decode(token);
+      await this._userService.updateToken(user.id, null);
       return { status: HttpStatus.OK };
     } catch (err) {
       this._logger.error(err);
@@ -109,14 +109,13 @@ export class AuthService {
   }
 
   public async refresh(
-    userId: string,
     refreshToken: string,
   ): Promise<TokensDto> {
     try {
-      const user = await this._userService.getUserById(userId);
-
+      const userJwt = await this._jwtService.decode(refreshToken);
+      const user = await this._userService.getUserById(userJwt.id);
       if (!user || !user.token) {
-        throw new ForbiddenException('Access denied!');
+        throw new ForbiddenException('Access denied!', 'test');
       }
 
       if (user.token !== refreshToken) {
@@ -139,7 +138,6 @@ export class AuthService {
       if (await this._userService.getUserByEmail(email)) {
         throw new ConflictException(`User with email:${email} already exists`);
       }
-
       const request = await this._redisRepository.get(email);
 
       if (!request) {
@@ -147,7 +145,6 @@ export class AuthService {
           'Your sign up request is not valid anymore',
         );
       }
-
       const requestFromBuffer = JSON.parse(request);
 
       if (requestFromBuffer.code !== signUpDto.code) {
@@ -156,8 +153,7 @@ export class AuthService {
 
       const password = await this._hashPassword(requestFromBuffer.password);
 
-      const entity = Object.assign(new UserEntity(), { password, email });
-      const user = await this._userService.createUser(entity);
+      const user = await this._userService.createUser(email, password);
       const tokens = await this._getTokens(user.id, user.email);
 
       await this._userService.updateToken(user.id, tokens.refreshToken);
@@ -172,7 +168,7 @@ export class AuthService {
   public async signUpRequest(
     signUpRequestDto: SignUpRequestDto,
   ): Promise<EmailPayloadDto> {
-    const { email } = signUpRequestDto;
+    const { email, password } = signUpRequestDto;
     try {
       if (await this._userService.getUserByEmail(email)) {
         throw new ConflictException(`User with email:${email} already exists`);
@@ -188,6 +184,7 @@ export class AuthService {
           Buffer.from(
             JSON.stringify({
               code,
+              password,
               timeToSend: Date.now(),
             }),
           ),
@@ -205,7 +202,7 @@ export class AuthService {
       if (timeDifference < 60) {
         throw new ConflictException(
           `You can resend message after ${
-            SIGN_UP_TTL_SECONDS - timeDifference
+            60 - timeDifference
           }s`,
         );
       }
@@ -216,14 +213,13 @@ export class AuthService {
         Buffer.from(
           JSON.stringify({
             code,
+            password,
             timeToSend: Date.now(),
           }),
         ),
         'EX',
         SIGN_UP_TTL_SECONDS,
       );
-
-      console.log('send');
 
       return { email, text: `Code to activate account: ${code}` };
     } catch (err) {
@@ -308,10 +304,10 @@ export class AuthService {
         (Date.now() - requestFromBuffer.timeToSend) / 1000,
       );
 
-      if (timeDifference < RESEND_TTL_SECONDS) {
+      if (timeDifference < 60) {
         throw new ConflictException(
           `You can resend message after ${
-            RESEND_TTL_SECONDS - timeDifference
+            60 - timeDifference
           }s`,
         );
       }

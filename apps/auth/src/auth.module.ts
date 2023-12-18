@@ -11,6 +11,7 @@ import { ormConfig, redisConfig } from '@app/common/configs';
 import { RtStrategy } from './strategies/refresh-token.strategy';
 import { AtStrategy } from './strategies';
 import { RmqModule } from '@app/common/modules';
+import { AtGuard, RtGuard } from './guards';
 
 @Module({
   imports: [
@@ -25,6 +26,6 @@ import { RmqModule } from '@app/common/modules';
     RmqModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, RtStrategy, AtStrategy],
+  providers: [AuthService, RtStrategy, AtStrategy, RtGuard, AtGuard],
 })
 export class AuthModule {}

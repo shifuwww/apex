@@ -52,8 +52,9 @@ export class UserService {
     }
   }
 
-  public createUser(entity: UserEntity) {
+  public async createUser(email: string, password: string) {
     try {
+      const entity = this._userRepository.create({email, password});
       return this._userRepository.save(entity);
     } catch (err) {
       this._logger.error(err);

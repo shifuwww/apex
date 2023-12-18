@@ -8,7 +8,7 @@ export class CreateDbMigration1702761905715 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
         CREATE TABLE "user" (
-            "id" uuid PRIMARY KEY,
+            "id" UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
             "email" varchar(255) NOT NULL,
             "token" varchar(255) NULL,
             "password" varchar(255) NOT NULL,
@@ -40,7 +40,6 @@ export class CreateDbMigration1702761905715 implements MigrationInterface {
 
     const users: UserEntity[] = [
       Object.assign(new UserEntity(), {
-        id: faker.string.uuid(),
         email: `user@gmail.com`,
         password: await _hashPassword('Qwerty123321!'),
         createdAt: faker.date.past(),
@@ -50,7 +49,6 @@ export class CreateDbMigration1702761905715 implements MigrationInterface {
     for (let i = 0; i < 10; i++) {
       users.push(
         Object.assign(new UserEntity(), {
-          id: faker.string.uuid(),
           email: faker.internet.email(),
           password: await _hashPassword(faker.internet.password()),
           createdAt: faker.date.past(),
@@ -65,7 +63,7 @@ export class CreateDbMigration1702761905715 implements MigrationInterface {
 
     await queryRunner.query(`
         CREATE TABLE "post" (
-            "id" uuid PRIMARY KEY,
+            "id" UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
             "title" varchar(255) NOT NULL,
             "text" text NOT NULL,
             "ownerId" uuid NOT NULL,
@@ -83,7 +81,6 @@ export class CreateDbMigration1702761905715 implements MigrationInterface {
         ...faker.helpers.multiple(
           () =>
             Object.assign(new PostEntity(), {
-              id: faker.string.uuid(),
               title: faker.lorem.words(3),
               text: faker.lorem.paragraph(),
               owner: { id: user.id },

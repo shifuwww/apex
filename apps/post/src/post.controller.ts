@@ -24,7 +24,7 @@ import {
   TokenDto,
   UpdatePostDto,
 } from './dtos';
-import { AuthGuard, RtGuard } from '@app/common/guards';
+import { AtGuard, RtGuard } from '@app/common/guards';
 import {
   ApiBearerAuth,
   ApiCookieAuth,
@@ -65,7 +65,7 @@ export class PostController {
   })
   @ApiOperation({ summary: 'Get lists of posts' })
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(AuthGuard)
+  @UseGuards(AtGuard)
   @ApiBearerAuth()
   @Get('post/list')
   public getListPost(
@@ -82,15 +82,15 @@ export class PostController {
   })
   @ApiOperation({ summary: 'Get list of my posts' })
   @HttpCode(HttpStatus.OK)
-  @UseGuards(AuthGuard)
+  @UseGuards(AtGuard)
   @ApiBearerAuth()
   @Get('post/my')
   public getMyPosts(
     @Query() getListPostDto: GetListPostDto,
     @Req() request: any,
   ): Promise<ListPostDto> {
-    const user = request.user as AccessTokenInterface;
-    return this._postService.getMyPost(getListPostDto, user.id);
+    const userId = request.sub;
+    return this._postService.getMyPost(getListPostDto, userId);
   }
 
   @ApiTags('post')
@@ -101,7 +101,7 @@ export class PostController {
   })
   @ApiOperation({ summary: 'Create post' })
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(AuthGuard)
+  @UseGuards(AtGuard)
   @ApiBearerAuth()
   @Post('post')
   public createPost(
@@ -120,7 +120,7 @@ export class PostController {
   })
   @ApiOperation({ summary: 'Update post' })
   @HttpCode(HttpStatus.OK)
-  @UseGuards(AuthGuard)
+  @UseGuards(AtGuard)
   @ApiBearerAuth()
   @Put('post')
   public updatePost(
@@ -139,7 +139,7 @@ export class PostController {
   })
   @ApiOperation({ summary: 'Get post by id' })
   @HttpCode(HttpStatus.OK)
-  @UseGuards(AuthGuard)
+  @UseGuards(AtGuard)
   @ApiBearerAuth()
   @Get('post/:id')
   public getPost(@Param('id', ParseUUIDPipe) id: string): Promise<GetPostDto> {
@@ -154,7 +154,7 @@ export class PostController {
   })
   @ApiOperation({ summary: 'Delete post by id' })
   @HttpCode(HttpStatus.NO_CONTENT)
-  @UseGuards(AuthGuard)
+  @UseGuards(AtGuard)
   @ApiBearerAuth()
   @Delete('post/:id')
   public deletePost(
@@ -173,13 +173,13 @@ export class PostController {
   })
   @ApiOperation({ summary: 'User sign in' })
   @HttpCode(HttpStatus.OK)
-  @Post('sign-in')
+  @Post('auth/sign-in')
   public async signIn(
     @Body() signInDto: SignInDto,
     @Res({ passthrough: true }) response: Response,
   ): Promise<TokenDto> {
     const data: TokensDto & CookieConfigDto = await firstValueFrom(
-      this._authClient.send({ cmd: 'sign-in' }, { body: signInDto }),
+      this._authClient.send({ cmd: 'sign-in' }, signInDto),
     );
     const { refreshToken, httpOnly, expires, path } = data;
     response.cookie(COOKIE_AUTH, refreshToken, {
@@ -206,11 +206,15 @@ export class PostController {
     @Req() request: any,
     @Res({ passthrough: true }) response: Response,
   ): Promise<StatusDto> {
-    const user = request.user as AccessTokenInterface;
-    const cookie: CookieConfigDto = await firstValueFrom(
-      this._authClient.send({ cmd: 'logout' }, { id: user.id }),
+    const token = request.cookies.auth;
+    await firstValueFrom(
+      this._authClient.emit('logout', { token }),
     );
-    response.cookie(COOKIE_AUTH, null, cookie);
+    response.cookie(COOKIE_AUTH, null, {
+      httpOnly: true,
+      expires: new Date(),
+      path: '/'
+    });
     return { status: HttpStatus.OK };
   }
 
@@ -218,7 +222,7 @@ export class PostController {
   @ApiResponse({
     status: 200,
     description: 'User tokens refresh',
-    type: StatusDto,
+    type: TokenDto,
   })
   @ApiOperation({ summary: 'Update tokens by refresh token' })
   @HttpCode(HttpStatus.OK)
@@ -229,11 +233,10 @@ export class PostController {
     @Req() request: any,
     @Res({ passthrough: true }) response: Response,
   ): Promise<TokenDto> {
-    const user = request.user as AccessTokenInterface;
-    const token = request.cookies['auth'];
+    const userId: string = request.sub;
+    const token: string = request.cookies.auth;
     const data: TokensDto & CookieConfigDto = await firstValueFrom(
-      this._authClient.send({ cmd: 'refresh' }, { id: user.id, token }),
-    );
+      this._authClient.send({ cmd: 'refresh' }, { id: userId, token }));
     const { refreshToken, httpOnly, expires, path } = data;
     response.cookie(COOKIE_AUTH, refreshToken, {
       httpOnly,
@@ -248,7 +251,7 @@ export class PostController {
   @ApiResponse({
     status: 201,
     description: 'User sign up',
-    type: TokensDto,
+    type: TokenDto,
   })
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Finished registration' })
@@ -292,7 +295,7 @@ export class PostController {
   @ApiResponse({
     status: 200,
     description: 'User password updated',
-    type: TokensDto,
+    type: TokenDto,
   })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'User password update' })

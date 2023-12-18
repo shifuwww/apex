@@ -1,1 +1,1 @@
-export const SIGN_UP_TTL_SECONDS = 60;
+export const SIGN_UP_TTL_SECONDS = 900;
